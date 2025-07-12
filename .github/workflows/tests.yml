@@ -1,0 +1,29 @@
+---
+# yamllint disable rule:line-length
+name: Test healthcheck repo
+
+on:  # yamllint disable-line rule:truthy
+  push:
+  pull_request:
+
+jobs:
+  simpletest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify healthcheck docker build and up
+        run: |
+          sudo apt-get -y install git lavacli
+          git clone https://github.com/Baylibre/lava-docker
+          cd lava-docker && ./lavalab-gen.py boards-ci-hc.yaml
+          cd output/local && docker compose build
+      - name: Launch lava-docker
+        run: cd lava-docker/output/local && docker compose up -d
+      - name: Wait for LAVA to be started
+        run: cd lava-docker && sh .github/workflows/wait-for-docker.sh
+      - name: Wait for first job to be completed
+        # yamllint disable-line rule:line-length
+        run: cd lava-docker/ && sh .github/workflows/lavacli.sh jobs wait 1
+      - name: Check if all is okay
+        # yamllint disable-line rule:line-length
+        run: cd lava-docker/ && sh .github/workflows/lavacli.sh health 1
